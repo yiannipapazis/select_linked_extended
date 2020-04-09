@@ -37,10 +37,10 @@ class LayoutDemoPanel(bpy.types.Panel):
         scene = context.scene
         # Big render button
         layout.label(text="Big Button:")
+        self.layout.menu(select_links_extended.bl_idname)
         row = layout.row()
         row.scale_y = 3.0
         row.operator("wm.myop")
-
 
 class find_object_sockets(bpy.types.Operator):
     bl_idname = "my_operator.my_class_name"
@@ -57,9 +57,10 @@ class find_object_sockets(bpy.types.Operator):
         for each in modifiers:
             print(each)
         return {"FINISHED"}
-class CustomMenu(bpy.types.Menu):
-    bl_label = "Custom Menu"
-    bl_idname = "OBJECT_MT_custom_menu"
+
+class make_links_extended(bpy.types.Menu):
+    bl_label = "Extended"
+    bl_idname = "OBJECT_MT_make_links_extended"
 
     def draw(self, context):
         layout = self.layout
@@ -67,15 +68,42 @@ class CustomMenu(bpy.types.Menu):
         # layout.operator("wm.open_mainfile")
         # layout.operator("wm.save_as_mainfile").copy = True
         
-        layout.label(text="Modifiers", icon='MODIFIER')
         modifiers = bpy.context.active_object.modifiers
         for mod in modifiers:
             layout.label(text=mod.type, icon='MODIFIER')
         
+        
         active_object = bpy.context.active_object
         selection_list = bpy.context.selected_objects
         object_data = active_object.data.name
-        print(len(selection_list))
+        if active_object.type == "CURVE":
+            layout.label(text="Curves", icon='CURVE_DATA')
+            print(selection_list)
+            if len(selection_list) >= 1:
+                layout.operator('object.link_curve', text='Taper Object').taper_object = True
+                layout.operator('object.link_curve', text='Bevel Object').bevel_object = True
+            # bpy.data.curves[object_data]
+class select_links_extended(bpy.types.Menu):
+    bl_label = "Select Linked Extended"
+    bl_idname = "OBJECT_MT_select_linkes_extended"
+
+    def draw(self, context):
+        layout = self.layout
+
+        # layout.operator("wm.open_mainfile")
+        # layout.operator("wm.save_as_mainfile").copy = True
+        layout.operator_menu_enum("object.select_linked", "type", text = "Select Linked")        
+        modifiers = bpy.context.active_object.modifiers
+        for mod in modifiers:
+            layout.separator()
+            layout.label(text=mod.name, icon='MODIFIER')
+            if mod.type=="MIRROR":
+                bpy.data.objects[mod.mirror_object].select_set(True)
+                layout.operator('view3d.view_selected', text = mod.mirror_object.name, icon = "OBJECT_DATA")
+
+        active_object = bpy.context.active_object
+        selection_list = bpy.context.selected_objects
+        object_data = active_object.data.name
         if active_object.type == "CURVE":
             layout.label(text="Curves", icon='CURVE_DATA')
             print(selection_list)
@@ -86,7 +114,8 @@ class CustomMenu(bpy.types.Menu):
 
 def add_menu_item(self, context):
     layout = self.layout
-    layout.menu(CustomMenu.bl_idname)
+    layout.menu(make_links_extended.bl_idname)
+
 
     
 class link_curve(bpy.types.Operator):
@@ -104,10 +133,6 @@ class link_curve(bpy.types.Operator):
             if self.taper_object: bpy.data.curves[each.data.name].taper_object = active_object
             if self.bevel_object: bpy.data.curves[each.data.name].bevel_object = active_object        
         return {'FINISHED'}
-
-
-
-
 
 class EdgeToCurve2DOperator(bpy.types.Operator):
     bl_idname = "object.edge_to_curve_2d"
@@ -134,7 +159,8 @@ classes = (
     LayoutDemoPanel,
     find_object_sockets,
     link_curve,
-    CustomMenu
+    make_links_extended,
+    select_links_extended
 
 )
 
@@ -151,7 +177,5 @@ def unregister():
     bpy.types.VIEW3D_MT_make_links.remove(add_menu_item)
     for cls in classes:
         bpy.utils.unregister_class(cls)
-
-
 if __name__ == "__main__":
     register()
