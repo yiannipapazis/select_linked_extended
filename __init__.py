@@ -12,6 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+from .modifier_categories import all_modifier_names_icons_types
+from .modifier_categories import all_modifier_object_slots
 bl_info = {
     "name": "Select Linked Extended",
     "author": "Yianni Papazis",
@@ -40,22 +42,6 @@ class LayoutDemoPanel(bpy.types.Panel):
         self.layout.menu(select_linked_extended.bl_idname)
         row = layout.row()
         row.scale_y = 3.0
-
-class find_object_sockets(bpy.types.Operator):
-    bl_idname = "my_operator.my_class_name"
-    bl_label = "Object Sockets"
-    bl_description = "Description that shows in blender tooltips"
-    bl_options = {"REGISTER"}
-
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def execute(self, context):
-        modifiers = bpy.context.active_object.modifiers
-        for each in modifiers:
-            print(each)
-        return {"FINISHED"}
 
 class make_links_extended(bpy.types.Menu):
     bl_label = "Extended"
@@ -90,14 +76,28 @@ class select_linked_extended(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
-        layout.operator_menu_enum("object.select_linked", "type", text = "Select Linked")        
-        modifiers = bpy.context.active_object.modifiers
+        layout.operator_menu_enum("object.select_linked", "type", text = "Select Linked")    
+        modifiers = bpy.context.active_object.modifiers        
+        print(modifiers[0].type)
+        modifier_types = (all_modifier_names_icons_types())
+        modifier_slots = all_modifier_object_slots()
+
+
         for mod in modifiers:
             layout.separator()
-            layout.label(text=mod.name, icon='MODIFIER')
-            if mod.type=="MIRROR":
-                bpy.data.objects[mod.mirror_object].select_set(True)
-                layout.operator('view3d.view_selected', text = mod.mirror_object.name, icon = "OBJECT_DATA")
+
+            modifier_type = mod.type
+            for mod_type in modifier_types:
+                modifier_name, modifier_icon, modifier_type = mod_type            
+                if mod.type == modifier_type:       
+                    try:
+                        mod_slot = modifier_slots[modifier_type]
+                        layout.label(text=mod.name, icon=modifier_icon)
+                        layout.separator_spacer()
+                        for object_slot_name, object_slot in mod_slot:
+                            layout.label(text=object_slot_name)
+                    except KeyError:
+                        print("No objects in modifier")
 
         active_object = bpy.context.active_object
         selection_list = bpy.context.selected_objects
@@ -180,7 +180,6 @@ class EdgeToCurve2DOperator(bpy.types.Operator):
 
 classes = (
     LayoutDemoPanel,
-    find_object_sockets,
     link_curve,
     make_links_extended,
     select_linked_extended,
